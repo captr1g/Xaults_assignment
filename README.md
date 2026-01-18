@@ -2,48 +2,72 @@
 
 This project implements a UUPS upgradeable ERC20 token with access control and a capped supply. It demonstrates a safe upgrade path to a V2 implementation that adds pausable functionality.
 
+## Sepolia Testnet Deployment
+
+| Contract | Address |
+| :--- | :--- |
+| **Proxy (AssetToken)** | [`0xD48671D86121d9A15a0f3D661362617D2eeb83E1`](https://sepolia.etherscan.io/address/0xD48671D86121d9A15a0f3D661362617D2eeb83E1) |
+| **AssetTokenV1 Implementation** | [`0xF49c4a6271398a9a8283292BD21623dC955ed4ff`](https://sepolia.etherscan.io/address/0xF49c4a6271398a9a8283292BD21623dC955ed4ff) |
+| **AssetTokenV2 Implementation** | [`0xBeF8024A88732b3195940785e1b07aBd6b901740`](https://sepolia.etherscan.io/address/0xBeF8024A88732b3195940785e1b07aBd6b901740) |
+
 ## Setup
 
-1. Install dependencies:
+1. **Install Foundry**:
    ```bash
-   forge install OpenZeppelin/openzeppelin-contracts-upgradeable OpenZeppelin/openzeppelin-contracts --no-commit
-   ```
-2. Build the project:
-   ```bash
-   forge build
+   curl -L https://foundry.paradigm.xyz | bash
+   foundryup
    ```
 
-## Testing
+2. **Install Dependencies**:
+   ```bash
+   forge install
+   ```
 
-Run the test suite to verify the upgrade lifecycle and storage persistence:
+3. **Configure Environment**:
+   Create a `.env` file from the template:
+   ```bash
+   cp .env.example .env # (If example exists, otherwise create new)
+   ```
+   Populate it with your keys:
+   ```ini
+   PRIVATE_KEY=0x...
+   SEPOLIA_RPC_URL=https://...
+   ETHERSCAN_API_KEY=...
+   PROXY_ADDRESS=0xD48671D86121d9A15a0f3D661362617D2eeb83E1
+   ```
+
+## Usage
+
+### 1. Build and Test
 ```bash
+forge build
 forge test -vv
 ```
 
-## Deployment
-
-To deploy to a local testnet (e.g., Anvil):
-
-1. Start Anvil:
-   ```bash
-   anvil
-   ```
-2. Run the script:
-   ```bash
-   forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --private-key <PRIVATE_KEY_FROM_ANVIL>
-   ```
-
-## CLI Interaction
-
-Example of manually interacting with the deployed contract using `cast`:
-
+### 2. Deploy (fresh)
 ```bash
-# Mint 100 tokens to a specific address (assuming you are the admin/minter)
-cast send <PROXY_ADDRESS> "mint(address,uint256)" <RECEIVER_ADDRESS> 100000000000000000000 --rpc-url http://127.0.0.1:8545 --private-key <PRIVATE_KEY>
+source .env
+forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 ```
 
-## Storage Safety Verification
+### 3. Upgrade to V2
+```bash
+source .env
+forge script script/Upgrade.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
+```
 
-Storage safety is ensured by:
-1. **Inheritance**: `AssetTokenV2` inherits from `AssetToken`, ensuring the base storage layout (variables like `maxSupply`) remains at the same slots.
-2. **Namespaced Storage**: We utilize OpenZeppelin v5.x contracts. These contracts use ERC-7201 Namespaced Storage for upgradeable mixins (like `PausableUpgradeable`). This prevents storage collisions between the inheritance chain and new mixins added in V2.
+### 4. Mint Tokens
+```bash
+source .env
+forge script script/Mint.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
+```
+
+## Security & Architecture
+
+### Storage Safety
+- **Inheritance**: `AssetTokenV2` inherits `AssetToken` to preserve storage slots.
+- **Namespaced Storage**: Uses OpenZeppelin v5.0 Namespaced Storage for upgradeable mixins to prevent collisions.
+
+### Verification
+- **Slither**: Static analysis (recommended).
+- **Foundry Tests**: Includes unit tests for upgrades, access control, and pause logic.
